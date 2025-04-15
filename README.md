@@ -1,7 +1,7 @@
 # aft-cli
 
 ```
-aft-cli status
+aft-cli pipeline-status
 ```
 ```
 mainworkload-staging	xxxxxxxxxxxx-customizations-pipeline	Source	Succeeded	AFT-Global-Customizations	Succeeded	AFT-Account-Customizations	Succeeded
