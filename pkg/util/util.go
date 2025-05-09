@@ -67,12 +67,11 @@ func (c *FileCache) Get(key string) (*AWSAccounts, error) {
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
 		return nil, err
-
 	}
 
 	if time.Since(fileInfo.ModTime()) > c.ttl {
 		os.Remove(filePath)
-		return nil, nil
+		logger.ZapLog.Debug("cachefile expired")
 	}
 
 	f, err := os.Open(filePath)

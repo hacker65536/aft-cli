@@ -3,6 +3,7 @@ package myaws
 import (
 	"context"
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
@@ -17,7 +18,7 @@ import (
 
 func (m *MyAWS) ListAccounts() {
 
-	cacheTTL := 1 * time.Hour
+	cacheTTL := 180 * time.Second
 
 	cache, err := util.NewFileCache(cacheTTL)
 	if err != nil {
@@ -155,11 +156,18 @@ func (m *MyAWS) AftPipelineStatus() {
 			reason := ""
 			flg := false
 		*/
+
+		var times []time.Time
 		for _, status := range v.StageState {
 			fmt.Printf("%s\t",
 				//		*status.StageName,
 				status.LatestExecution.Status,
 			)
+			for _, action := range status.ActionStates {
+				if action.LatestExecution.LastStatusChange != nil {
+					times = append(times, *action.LatestExecution.LastStatusChange)
+				}
+			}
 
 			/*
 				if status.LatestExecution.Status == "Failed" {
@@ -180,7 +188,19 @@ func (m *MyAWS) AftPipelineStatus() {
 					}
 			*/
 		}
+		sort.Slice(times, func(i, j int) bool {
+			return times[i].After(times[j])
+		})
+		//fmt.Printf("%v", times)
+		jst, err := time.LoadLocation("Asia/Tokyo")
+		if err != nil {
+			logger.ZapLog.Fatal(err.Error())
+		}
+		fmt.Printf("%s",
+			times[0].In(jst).Format("2006-01-02T15:04:05+09:00"),
+		)
 		fmt.Println()
+		//		fmt.Println()
 		/*
 				if flg {
 					fmt.Printf("%s\n", reason)
