@@ -4,40 +4,72 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/codepipeline"
 	org "github.com/aws/aws-sdk-go-v2/service/organizations"
+	"github.com/hacker65536/aft-cli/pkg/logger"
+	"github.com/hacker65536/aft-cli/pkg/util"
 )
 
 func (m *MyAWS) ListAccounts() {
-	client := org.NewFromConfig(m.Config)
 
-	input := org.ListAccountsInput{}
+	cacheTTL := 1 * time.Hour
 
-	p := org.NewListAccountsPaginator(client, &input, func(o *org.ListAccountsPaginatorOptions) {
-		//	o.Limit = 10
-	})
-	pageNum := 0
+	cache, err := util.NewFileCache(cacheTTL)
+	if err != nil {
+		logger.ZapLog.Error(err.Error())
+	}
+	key := "accounts"
 
-	for p.HasMorePages() {
-		pageNum++
-		output, err := p.NextPage(context.TODO())
+	if data, err := cache.Get(key); err == nil {
+		// Use cached data
+		m.Accounts = data.Accounts
+		logger.ZapLog.Debug("data from cache")
+	} else {
+		// Fetch or compute data
+		client := org.NewFromConfig(m.Config)
+
+		input := org.ListAccountsInput{}
+
+		p := org.NewListAccountsPaginator(client, &input, func(o *org.ListAccountsPaginatorOptions) {
+			//	o.Limit = 10
+		})
+		pageNum := 0
+
+		for p.HasMorePages() {
+			pageNum++
+			output, err := p.NextPage(context.TODO())
+			if err != nil {
+				logger.ZapLog.Fatal(err.Error())
+			}
+			for _, account := range output.Accounts {
+				if account.Status == "ACTIVE" {
+					m.Accounts = append(m.Accounts, account)
+				}
+
+			}
+		}
+		for _, v := range m.Accounts {
+			Accounts[*v.Id+"-customizations-pipeline"] = *v.Name
+			//		fmt.Println(*v.Id, *v.Name, *v.JoinedTimestamp)
+		}
+		//		data := []byte("some data to cache")
+
+		// Create AWSAccounts object and populate it with the account data
+		awsAccounts := &util.AWSAccounts{
+			Accounts: m.Accounts,
+		}
+
+		// Store data in cache
+		err := cache.Set(key, awsAccounts)
 		if err != nil {
 			panic(err)
 		}
-		for _, account := range output.Accounts {
-			if account.Status == "ACTIVE" {
-				m.Accounts = append(m.Accounts, account)
-			}
-
-		}
-	}
-	for _, v := range m.Accounts {
-		Accounts[*v.Id+"-customizations-pipeline"] = *v.Name
-		//		fmt.Println(*v.Id, *v.Name, *v.JoinedTimestamp)
+		logger.ZapLog.Debug("data stored in cache")
 	}
 
 }
@@ -81,8 +113,7 @@ func (m *MyAWS) AftPipelineStatus() {
 	m.ListCodePipelines()
 	//	fmt.Println("listpipeline")
 
-	concurrencyNum := 7
-	ch := make(chan struct{}, concurrencyNum)
+	ch := make(chan struct{}, ConcurrencyNum)
 	var wg sync.WaitGroup
 
 	for _, v := range m.Pipelines {
