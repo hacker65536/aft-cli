@@ -4,8 +4,10 @@ Copyright © 2025 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"github.com/hacker65536/aft-cli/pkg/logger"
 	"github.com/hacker65536/aft-cli/pkg/myaws"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 // pipelineStatusCmd represents the pipelineStatus command
@@ -20,6 +22,12 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Aliases: []string{"pipeline-status"},
 	Run: func(cmd *cobra.Command, args []string) {
+
+		if debug, _ := cmd.Flags().GetBool("debug"); debug {
+			lvl := zap.DebugLevel
+			logger.InitializeLogger(lvl)
+			defer logger.ZapLog.Sync() // Flu
+		}
 		myaws := myaws.New()
 		myaws.AftPipelineStatus()
 	},
@@ -37,4 +45,5 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// pipelineStatusCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	pipelineStatusCmd.Flags().BoolP("debug", "d", false, "debug")
 }

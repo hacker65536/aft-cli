@@ -10,8 +10,8 @@ import (
 )
 
 func main() {
-	//lvl := zap.FatalLevel
-	lvl := zap.DebugLevel
+	lvl := zap.FatalLevel
+	//lvl := zap.DebugLevel
 	logger.InitializeLogger(lvl)
 	defer logger.ZapLog.Sync() // Flush buffered logs
 	cmd.Execute()

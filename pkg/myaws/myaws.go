@@ -29,6 +29,8 @@ func (m *MyAWS) ListAccounts() {
 		// Use cached data
 		m.Accounts = data.Accounts
 		logger.ZapLog.Debug("data from cache")
+		//		logger.ZapLog.Debug(fmt.Sprintf("%+v", m.Accounts))
+
 	} else {
 		// Fetch or compute data
 		client := org.NewFromConfig(m.Config)
@@ -53,11 +55,6 @@ func (m *MyAWS) ListAccounts() {
 
 			}
 		}
-		for _, v := range m.Accounts {
-			Accounts[*v.Id+"-customizations-pipeline"] = *v.Name
-			//		fmt.Println(*v.Id, *v.Name, *v.JoinedTimestamp)
-		}
-		//		data := []byte("some data to cache")
 
 		// Create AWSAccounts object and populate it with the account data
 		awsAccounts := &util.AWSAccounts{
@@ -67,10 +64,15 @@ func (m *MyAWS) ListAccounts() {
 		// Store data in cache
 		err := cache.Set(key, awsAccounts)
 		if err != nil {
-			panic(err)
+			logger.ZapLog.Fatal(err.Error())
 		}
 		logger.ZapLog.Debug("data stored in cache")
 	}
+	for _, v := range m.Accounts {
+		Accounts[*v.Id+"-customizations-pipeline"] = *v.Name
+		//		fmt.Println(*v.Id, *v.Name, *v.JoinedTimestamp)
+	}
+	//	logger.ZapLog.Debug("accounts data", zap.Any("accounts", Accounts))
 
 }
 
@@ -145,34 +147,47 @@ func (m *MyAWS) AftPipelineStatus() {
 			}
 		*/
 
-		fmt.Printf("%s\t%s\t", Accounts[v.PipelineName], v.PipelineName)
-		reason := ""
-		flg := false
+		fmt.Printf("%s\t",
+			Accounts[v.PipelineName],
+			//			v.PipelineName,
+		)
+		/*
+			reason := ""
+			flg := false
+		*/
 		for _, status := range v.StageState {
-			fmt.Printf("%s\t%s\t", *status.StageName, status.LatestExecution.Status)
-			if status.LatestExecution.Status == "Failed" {
-				flg = true
-				reason += "  StageName: " + *status.StageName + "\n"
-			}
+			fmt.Printf("%s\t",
+				//		*status.StageName,
+				status.LatestExecution.Status,
+			)
 
-			for _, action := range status.ActionStates {
-				if action.LatestExecution.Status == "Failed" {
-
-					message := *action.LatestExecution.ErrorDetails.Message
-					messagePreview := message
-					if len(message) > 20 {
-						messagePreview = message[:20]
-					}
-					reason += "    ActionName: " + *action.ActionName + " ErrorCode: " + *action.LatestExecution.ErrorDetails.Code + " ErrorMessage: " + messagePreview + "\n"
+			/*
+				if status.LatestExecution.Status == "Failed" {
+					flg = true
+					reason += "  StageName: " + *status.StageName + "\n"
 				}
-			}
+
+					for _, action := range status.ActionStates {
+						if action.LatestExecution.Status == "Failed" {
+
+							message := *action.LatestExecution.ErrorDetails.Message
+							messagePreview := message
+							if len(message) > 20 {
+								messagePreview = message[:20]
+							}
+							reason += "    ActionName: " + *action.ActionName + " ErrorCode: " + *action.LatestExecution.ErrorDetails.Code + " ErrorMessage: " + messagePreview + "\n"
+						}
+					}
+			*/
 		}
 		fmt.Println()
-		if flg {
-			fmt.Printf("%s\n", reason)
-		}
-		flg = false
-		reason = ""
+		/*
+				if flg {
+					fmt.Printf("%s\n", reason)
+				}
+				reason = ""
+			flg = false
+		*/
 	}
 
 }
